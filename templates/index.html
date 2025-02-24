@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBA Game Predictor</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.10.3/cdn.min.js" defer></script>
+</head>
+<body class="bg-gray-100 min-h-screen" x-data="nbaPredictor()">
+    <header class="bg-blue-900 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <h1 class="text-3xl font-bold">NBA Game Predictor</h1>
+            <p class="text-blue-200">Predict game outcomes and player stats using machine learning</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <!-- Team Selection -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4">Select Teams</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Home Team -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Home Team</label>
+                    <select 
+                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        x-model="homeTeam">
+                        <option value="">Select Home Team</option>
+                        <template x-for="team in teams" :key="team">
+                            <option :value="team" x-text="team"></option>
+                        </template>
+                    </select>
+                </div>
+                
+                <!-- Away Team -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Away Team</label>
+                    <select 
+                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        x-model="awayTeam">
+                        <option value="">Select Away Team</option>
+                        <template x-for="team in teams" :key="team">
+                            <option :value="team" x-text="team"></option>
+                        </template>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lineup Selection -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <!-- Home Lineup -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-bold mb-4" x-text="homeTeam ? homeTeam + ' Lineup' : 'Home Team Lineup'"></h2>
+                
+                <!-- Player Search -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Search Players</label>
+                    <div class="relative">
+                        <input 
+                            type="text" 
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            placeholder="Search for a player..." 
+                            x-model="homeSearch"
+                            @input="filterHomePlayers()">
+                        
+                        <!-- Search Results Dropdown -->
+                        <div 
+                            class="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm"
+                            x-show="homeSearch.length > 0 && homeSearchResults.length > 0">
+                            <template x-for="(player, index) in homeSearchResults" :key="index">
+                                <div 
+                                    class="cursor-pointer hover:bg-gray-100 p-2"
+                                    @click="addHomePlayer(player)"
+                                    x-text="player">
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Selected Players -->
+                <div>
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Selected Players (<span x-text="homeLineup.length"></span>/5)</h3>
+                    <div class="space-y-2">
+                        <template x-for="(player, index) in homeLineup" :key="index">
+                            <div class="flex items-center justify-between bg-gray-50 p-2 rounded">
+                                <span x-text="player"></span>
+                                <button 
+                                    @click="removeHomePlayer(index)"
+                                    class="text-red-500 hover:text-red-700">
+                                    Remove
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                    <div x-show="homeLineup.length === 0" class="text-gray-500 text-sm italic">
+                        No players selected
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Away Lineup -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-bold mb-4" x-text="awayTeam ? awayTeam + ' Lineup' : 'Away Team Lineup'"></h2>
+                
+                <!-- Player Search -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Search Players</label>
+                    <div class="relative">
+                        <input 
+                            type="text" 
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            placeholder="Search for a player..." 
+                            x-model="awaySearch"
+                            @input="filterAwayPlayers()">
+                        
+                        <!-- Search Results Dropdown -->
+                        <div 
+                            class="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm"
+                            x-show="awaySearch.length > 0 && awaySearchResults.length > 0">
+                            <template x-for="(player, index) in awaySearchResults" :key="index">
+                                <div 
+                                    class="cursor-pointer hover:bg-gray-100 p-2"
+                                    @click="addAwayPlayer(player)"
+                                    x-text="player">
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Selected Players -->
+                <div>
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Selected Players (<span x-text="awayLineup.length"></span>/5)</h3>
+                    <div class="space-y-2">
+                        <template x-for="(player, index) in awayLineup" :key="index">
+                            <div class="flex items-center justify-between bg-gray-50 p-2 rounded">
+                                <span x-text="player"></span>
+                                <button 
+                                    @click="removeAwayPlayer(index)"
+                                    class="text-red-500 hover:text-red-700">
+                                    Remove
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                    <div x-show="awayLineup.length === 0" class="text-gray-500 text-sm italic">
+                        No players selected
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prediction Button -->
+        <div class="text-center mb-8">
+            <button 
+                @click="getPrediction"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="!validForm">
+                Get Prediction
+            </button>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div x-show="loading" class="text-center mb-8">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p class="mt-2 text-gray-600">Generating prediction...</p>
+        </div>
+
+        <!-- Prediction Results -->
+        <div x-show="prediction" class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-6 text-center">Game Prediction Results</h2>
+            
+            <!-- Score Prediction -->
+            <div class="flex justify-center items-center mb-8">
+                <div class="text-center px-8">
+                    <h3 x-text="prediction.home_team" class="text-lg font-medium"></h3>
+                    <p class="text-4xl font-bold text-blue-600" x-text="prediction.predicted_home_score"></p>
+                </div>
+                <div class="text-2xl font-bold text-gray-400 px-4">VS</div>
+                <div class="text-center px-8">
+                    <h3 x-text="prediction.away_team" class="text-lg font-medium"></h3>
+                    <p class="text-4xl font-bold text-blue-600" x-text="prediction.predicted_away_score"></p>
+                </div>
+            </div>
+            
+            <!-- Winner -->
+            <div class="text-center mb-8">
+                <p class="text-lg">
+                    Predicted Winner: 
+                    <span class="font-bold" x-text="prediction.winner"></span>
+                </p>
+            </div>
+            
+            <!-- Team Stats Comparison -->
+            <div class="mb-8">
+                <h3 class="text-xl font-bold mb-4 text-center">Team Stats Comparison</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white">
+                        <thead>
+                            <tr>
+                                <th class="py-2 px-4 border-b"></th>
+                                <th class="py-2 px-4 border-b text-left" x-text="prediction.home_team"></th>
+                                <th class="py-2 px-4 border-b text-left" x-text="prediction.away_team"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="py-2 px-4 border-b font-medium">Points</td>
+                                <td class="py-2 px-4 border-b" x-text="prediction.home_team_stats.points"></td>
+                                <td class="py-2 px-4 border-b" x-text="prediction.away_team_stats.points"></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-4 border-b font-medium">Rebounds</td>
+                                <td class="py-2 px-4 border-b" x-text="prediction.home_team_stats.rebounds"></td>
+                                <td class="py-2 px-4 border-b" x-text="prediction.away_team_stats.rebounds"></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-4 border-b font-medium">Assists</td>
+                                <td class="py-2 px-4 border-b" x-text="prediction.home_team_stats.assists"></td>
+                                <td class="py-2 px-4 border-b" x-text="prediction.away_team_stats.assists"></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-4 border-b font-medium">Steals</td>
+                                <td class="py-2 px-4 border-b" x-text="prediction.home_team_stats.steals"></td>
+                                <td class="py-2 px-4 border-b" x-text="prediction.away_team_stats.steals"></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-4 border-b font-medium">Blocks</td>
+                                <td class="py-2 px-4 border-b" x-text="prediction.home_team_stats.blocks"></td>
+                                <td class="py-2 px-4 border-b" x-text="prediction.away_team_stats.blocks"></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-4 border-b font-medium">Turnovers</td>
+                                <td class="py-2 px-4 border-b" x-text="prediction.home_team_stats.turnovers"></td>
+                                <td class="py-2 px-4 border-b" x-text="prediction.away_team_stats.turnovers"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Player Predictions -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Home Team Players -->
+                <div>
+                    <h3 class="text-xl font-bold mb-4" x-text="prediction.home_team + ' Player Stats'"></h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white">
+                            <thead>
+                                <tr>
+                                    <th class="py-2 px-2 border-b text-left">Player</th>
+                                    <th class="py-2 px-2 border-b text-right">PTS</th>
+                                    <th class="py-2 px-2 border-b text-right">REB</th>
+                                    <th class="py-2 px-2 border-b text-right">AST</th>
+                                    <th class="py-2 px-2 border-b text-right">STL</th>
+                                    <th class="py-2 px-2 border-b text-right">BLK</th>
+                                    <th class="py-2 px-2 border-b text-right">TOV</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="(player, index) in prediction.home_player_stats" :key="index">
+                                    <tr>
+                                        <td class="py-2 px-2 border-b font-medium" x-text="player.name"></td>
+                                        <td class="py-2 px-2 border-b text-right" x-text="player.points"></td>
+                                        <td class="py-2 px-2 border-b text-right" x-text="player.rebounds"></td>
+                                        <td class="py-2 px-2 border-b text-right" x-text="player.assists"></td>
+                                        <td class="py-2 px-2 border-b text-right" x-text="player.steals"></td>
+                                        <td class="py-2 px-2 border-b text-right" x-text="player.blocks"></td>
+                                        <td class="py-2 px-2 border-b text-right" x-text="player.turnovers"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Away Team Players -->
+                <div>
+                    <h3 class="text-xl font-bold mb-4" x-text="prediction.away_team + ' Player Stats'"></h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white">
+                            <thead>
+                                <tr>
+                                    <th class="py-2 px-2 border-b text-left">Player</th>
+                                    <th class="py-2 px-2 border-b text-right">PTS</th>
+                                    <th class="py-2 px-2 border-b text-right">REB</th>
+                                    <th class="py-2 px-2 border-b text-right">AST</th>
+                                    <th class="py-2 px-2 border-b text-right">STL</th>
+                                    <th class="py-2 px-2 border-b text-right">BLK</th>
+                                    <th class="py-2 px-2 border-b text-right">TOV</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="(player, index) in prediction.away_player_stats" :key="index">
+                                    <tr>
+                                        <td class="py-2 px-2 border-b font-medium" x-text="player.name"></td>
+                                        <td class="py-2 px-2 border-b text-right" x-text="player.points"></td>
+                                        <td class="py-2 px-2 border-b text-right" x-text="player.rebounds"></td>
+                                        <td class="py-2 px-2 border-b text-right" x-text="player.assists"></td>
+                                        <td class="py-2 px-2 border-b text-right" x-text="player.steals"></td>
+                                        <td class="py-2 px-2 border-b text-right" x-text="player.blocks"></td>
+                                        <td class="py-2 px-2 border-b text-right" x-text="player.turnovers"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-white py-6">
+        <div class="container mx-auto px-4 text-center">
+            <p>NBA Game Predictor - Powered by Machine Learning</p>
+        </div>
+    </footer>
+
+    <script>
+        function nbaPredictor() {
+            return {
+                // Data
+                teams: [],
+                allPlayers: [],
+                homeTeam: '',
+                awayTeam: '',
+                homeLineup: [],
+                awayLineup: [],
+                homeSearch: '',
+                awaySearch: '',
+                homeSearchResults: [],
+                awaySearchResults: [],
+                prediction: null,
+                loading: false,
+                
+                // Computed property
+                get validForm() {
+                    return this.homeTeam && 
+                           this.awayTeam && 
+                           this.homeLineup.length === 5 && 
+                           this.awayLineup.length === 5;
+                },
+                
+                // Methods
+                init() {
+                    this.fetchTeams();
+                    this.fetchPlayers();
+                },
+                
+                async fetchTeams() {
+                    try {
+                        const response = await fetch('/get_teams');
+                        this.teams = await response.json();
+                    } catch (error) {
+                        console.error('Error fetching teams:', error);
+                    }
+                },
+                
+                async fetchPlayers() {
+                    try {
+                        const response = await fetch('/get_players');
+                        this.allPlayers = await response.json();
+                    } catch (error) {
+                        console.error('Error fetching players:', error);
+                    }
+                },
+                
+                filterHomePlayers() {
+                    if (this.homeSearch.length < 2) {
+                        this.homeSearchResults = [];
+                        return;
+                    }
+                    
+                    const search = this.homeSearch.toLowerCase();
+                    this.homeSearchResults = this.allPlayers
+                        .filter(player => player.toLowerCase().includes(search))
+                        .slice(0, 10); // Limit to 10 results
+                },
+                
+                filterAwayPlayers() {
+                    if (this.awaySearch.length < 2) {
+                        this.awaySearchResults = [];
+                        return;
+                    }
+                    
+                    const search = this.awaySearch.toLowerCase();
+                    this.awaySearchResults = this.allPlayers
+                        .filter(player => player.toLowerCase().includes(search))
+                        .slice(0, 10); // Limit to 10 results
+                },
+                
+                addHomePlayer(player) {
+                    if (this.homeLineup.length < 5 && !this.homeLineup.includes(player)) {
+                        this.homeLineup.push(player);
+                        this.homeSearch = '';
+                        this.homeSearchResults = [];
+                    }
+                },
+                
+                addAwayPlayer(player) {
+                    if (this.awayLineup.length < 5 && !this.awayLineup.includes(player)) {
+                        this.awayLineup.push(player);
+                        this.awaySearch = '';
+                        this.awaySearchResults = [];
+                    }
+                },
+                
+                removeHomePlayer(index) {
+                    this.homeLineup.splice(index, 1);
+                },
+                
+                removeAwayPlayer(index) {
+                    this.awayLineup.splice(index, 1);
+                },
+                
+                async getPrediction() {
+                    if (!this.validForm) return;
+                    
+                    this.loading = true;
+                    this.prediction = null;
+                    
+                    try {
+                        const response = await fetch('/predict', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                home_team: this.homeTeam,
+                                away_team: this.awayTeam,
+                                home_lineup: this.homeLineup,
+                                away_lineup: this.awayLineup
+                            }),
+                        });
+                        
+                        this.prediction = await response.json();
+                        // Scroll to results
+                        setTimeout(() => {
+                            window.scrollTo({
+                                top: document.body.scrollHeight,
+                                behavior: 'smooth'
+                            });
+                        }, 100);
+                    } catch (error) {
+                        console.error('Error getting prediction:', error);
+                        alert('An error occurred while getting the prediction. Please try again.');
+                    } finally {
+                        this.loading = false;
+                    }
+                }
+            };
+        }
+    </script>
+</body>
+</html>
