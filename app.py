@@ -26,20 +26,24 @@ def get_players():
 def predict():
     """Predict match outcome and player stats"""
     data = request.json
-    
+
     home_team = data.get('home_team')
     away_team = data.get('away_team')
     home_lineup = data.get('home_lineup', [])
     away_lineup = data.get('away_lineup', [])
+    home_bench = data.get('home_bench', [])
+    away_bench = data.get('away_bench', [])
     
     if not home_team or not away_team:
         return jsonify({'error': 'Home team and away team are required'}), 400
-    
+
     if len(home_lineup) != 5 or len(away_lineup) != 5:
-        return jsonify({'error': 'Each team must have exactly 5 players in lineup'}), 400
-    
-    prediction = predictor.predict_match(home_team, away_team, home_lineup, away_lineup)
-    
+        return jsonify({'error': 'Each team must have exactly 5 starting players'}), 400
+
+    if len(home_bench) != 3 or len(away_bench) != 3:
+        return jsonify({'error': 'Each team must have exactly 3 bench players'}), 400
+
+    prediction = predictor.predict_match(home_team, away_team, home_lineup, away_lineup, home_bench, away_bench)
     return jsonify(prediction)
 
 @app.route('/health', methods=['GET'])
