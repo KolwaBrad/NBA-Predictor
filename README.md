@@ -63,7 +63,7 @@ nba-predictor/
 │   ├── nba_team_stats_2023_24.csv
 │   ├── nba_team_stats_2024_25.csv
 │   └── team_name_abbreviation.csv
-├── models/   # (will be created and populated when running nba_predictor.py)
+├── models/
 └── templates/
     └── index.html
 
